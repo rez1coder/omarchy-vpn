@@ -1,0 +1,12 @@
+.env
+.env.*
+!.env.example
+omarchy-vpn
+*.pkg.tar.zst
+pkg/
+src/
+docs/
+CLAUDE.md
+talisman_report/
+.talismanrc
+demo.tape

@@ -1,0 +1,97 @@
+package main
+
+import (
+	"time"
+
+	tea "charm.land/bubbletea/v2"
+	"charm.land/lipgloss/v2"
+)
+
+func (m model) View() tea.View {
+	if m.width == 0 || m.height == 0 {
+		return tea.NewView("")
+	}
+
+	// File picker
+	if m.modal == modalImporting {
+		v := tea.NewView(m.filePicker.View())
+		v.AltScreen = true
+		return v
+	}
+
+	// Help overlay replaces everything
+	if m.modal == modalHelp {
+		helpView := m.help.View(m.keys)
+		overlay := helpOverlayStyle.Render(
+			helpTitleStyle.Render("󰋖  Keyboard Shortcuts") + "\n\n" +
+				helpView + "\n\n" +
+				dimStyle.Render("Press any key to close"),
+		)
+		v := tea.NewView(lipgloss.Place(
+			m.width, m.height,
+			lipgloss.Center, lipgloss.Center,
+			overlay,
+		))
+		v.AltScreen = true
+		return v
+	}
+
+	// Layout: title bar (1) + gap (1) + panels + gap (1) + bottom bar (1)
+	titleBar := m.renderTitleBar()
+	titleHeight := 2 // title + gap
+	bottomHeight := 2 // gap + shortcuts
+	panelHeight := m.height - titleHeight - bottomHeight
+	if panelHeight < 5 {
+		panelHeight = 5
+	}
+
+	// Panel widths: 40/60 split
+	leftWidth := m.width * 2 / 5
+	rightWidth := m.width - leftWidth
+
+	if leftWidth < 24 {
+		leftWidth = 24
+		rightWidth = m.width - leftWidth
+	}
+
+	// Render panels
+	left := m.renderConfigPanel(leftWidth, panelHeight)
+	right := m.renderStatusPanel(rightWidth, panelHeight)
+
+	// Join panels horizontally
+	panels := lipgloss.JoinHorizontal(lipgloss.Top, left, right)
+
+	// Bottom bar
+	var bottom string
+	if m.message != "" && time.Now().Before(m.messageExp) {
+		bottom = " " + m.message
+	} else {
+		m.message = ""
+		bottom = " " + m.help.View(m.keys)
+	}
+
+	v := tea.NewView(lipgloss.JoinVertical(lipgloss.Left,
+		titleBar,
+		panels,
+		bottom,
+	))
+	v.AltScreen = true
+	return v
+}
+
+func (m model) renderTitleBar() string {
+	icon := titleStyle.Render("󰖂 ")
+	name := titleStyle.Render("omarchy-vpn")
+
+	var status string
+	if m.activeVPN != "" {
+		status = titleAccentStyle.Render("  ─  ") +
+			connectedStyle.Render("● " + m.activeVPN)
+	} else {
+		status = titleAccentStyle.Render("  ─  ") +
+			dimStyle.Render("○ disconnected")
+	}
+
+	return " " + icon + name + status + "\n"
+}
+
